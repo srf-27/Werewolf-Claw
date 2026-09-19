@@ -10,7 +10,10 @@
 
 - `OPENAI_API_KEY`: 必填，API 密钥。
 - `OPENAI_BASE_URL`: 可选，兼容 OpenAI 协议的服务地址。
-- `LLM_MODEL` 或 `OPENAI_MODEL`: 可选，默认模型名。
+- `LLM_MODEL` 或 `OPENAI_MODEL`: 可选，模型名。
+
+密钥、地址、模型名都在调用时读取，不是在导入时读。所以 `.env` 可以在导入本模块之后再
+`load_dotenv()`，仍然生效。
 """
 
 from __future__ import annotations
@@ -22,9 +25,17 @@ from typing import Any
 from openai import NOT_GIVEN, NotGiven, OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
-DEFAULT_MODEL = os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL") or "gpt-4o-mini"
+FALLBACK_MODEL = "gpt-4o-mini"
 
 _client: OpenAI | None = None
+
+
+def default_model() -> str:
+    """当前默认模型名，每次调用都重新读环境变量。
+
+    顺序：`LLM_MODEL` -> `OPENAI_MODEL` -> `gpt-4o-mini`。
+    """
+    return os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL") or FALLBACK_MODEL
 
 
 def get_client() -> OpenAI:
@@ -66,12 +77,12 @@ def chat(
     *,
     system: str | None = None,
     history: Iterable[ChatCompletionMessageParam] | None = None,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     temperature: float | None = None,
 ) -> str:
     """简单调用，返回模型回复的纯文本。
 
-    >>> chat("用一句话介绍狼人杀")
+    `model` 省略时用 `default_model()` 的结果。
     """
     completion = chat_full(
         build_messages(prompt, system=system, history=history),
@@ -84,7 +95,7 @@ def chat(
 def chat_full(
     messages: Iterable[ChatCompletionMessageParam],
     *,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     temperature: float | NotGiven = NOT_GIVEN,
     top_p: float | NotGiven = NOT_GIVEN,
     max_tokens: int | NotGiven = NOT_GIVEN,
@@ -109,6 +120,7 @@ def chat_full(
 ) -> ChatCompletion:
     """全参数调用，返回原始 `ChatCompletion` 对象。
 
+    `model` 省略时用 `default_model()` 的结果。
     参数默认值是 `NOT_GIVEN`，表示不发送该字段，交给服务端取默认值。
     要显式传空值时用 `None`，例如 `stop=None`。
     流式输出未封装，需要时用 `get_client().chat.completions.create(..., stream=True)`。
@@ -137,4 +149,5 @@ def chat_full(
         "extra_body": extra_body,
     }
     kwargs = {name: value for name, value in optional.items() if not isinstance(value, NotGiven)}
-    return get_client().chat.completions.create(messages=list(messages), model=model, **kwargs)
+    resolved_model = model or default_model()
+    return get_client().chat.completions.create(messages=list(messages), model=resolved_model, **kwargs)
