@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>关于 - Werewolf-Claw</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="doc-body">
+  <main class="doc-page">
+    <div class="about-head">
+      <img src="/static/avatars/assistant.svg" alt="" class="hero-logo">
+      <div>
+        <h1>Werewolf-Claw</h1>
+        <p class="doc-sub">带记忆和会话隔离的狼人杀 AI Agent 聊天工具</p>
+      </div>
+    </div>
+
+    <dl class="about-grid">
+      <dt>版本</dt>
+      <dd id="about-version">读取中…</dd>
+      <dt>当前模型</dt>
+      <dd id="about-model">读取中…</dd>
+      <dt>当前配置</dt>
+      <dd id="about-profile">读取中…</dd>
+      <dt>数据文件</dt>
+      <dd><code>memory/chat.db</code>（SQLite，按会话隔离）</dd>
+      <dt>配置文件</dt>
+      <dd><code>.env</code>（多套模型配置）</dd>
+    </dl>
+
+    <h2>它能做什么</h2>
+    <ul>
+      <li>多轮对话，历史消息落库，重启后继续聊。</li>
+      <li>会话按时间分组管理，支持置顶、重命名、多选批量删除、导入导出。</li>
+      <li>用户说「记住…」时写入长期记忆；上下文到 90% 自动压缩成摘要，保留最近几轮。</li>
+      <li>消息支持复制、引用、编辑重发；助手回复可以重新生成，最多 5 次，每次先总结不足再重写。</li>
+      <li>多套模型配置，随时切换，支持夜间模式。</li>
+    </ul>
+
+    <h2>技术栈</h2>
+    <ul>
+      <li>后端：FastAPI + uvicorn，接口见 <a href="/api-docs">/api-docs</a></li>
+      <li>模型调用：openai SDK（兼容 OpenAI 协议的服务都能接）</li>
+      <li>存储：SQLite（标准库 sqlite3）</li>
+      <li>前端：原生 HTML / CSS / JavaScript，无构建步骤</li>
+      <li>包管理：uv</li>
+    </ul>
+
+    <h2>目录</h2>
+    <pre class="about-tree">src/werewolf_claw/
+├── core/      llm.py（模型调用）· memory.py（记忆与会话）· node.py（节点流程）
+├── app/       server.py（FastAPI 接口）· static/（网页与头像）
+├── demo/      chatbot.py（命令行版）
+└── tools/     预留的工具目录
+docs/api.md    接口说明</pre>
+
+    <p class="doc-foot">
+      <a href="/">回到聊天</a> ｜ <a href="/help">使用帮助</a> ｜
+      <a href="https://github.com/srf-27/Werewolf-Claw" target="_blank" rel="noreferrer">GitHub 仓库</a>
+    </p>
+  </main>
+
+  <script>
+    fetch("/api/health")
+      .then((response) => response.json())
+      .then((data) => {
+        document.getElementById("about-version").textContent = `v${data.version || "未知"}`;
+        document.getElementById("about-model").textContent = data.model || "未配置";
+        document.getElementById("about-profile").textContent = data.profile_name || "未命名";
+      })
+      .catch(() => {
+        document.getElementById("about-version").textContent = "读取失败";
+      });
+  </script>
+</body>
+</html>

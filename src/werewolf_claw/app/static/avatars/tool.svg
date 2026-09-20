@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="工具头像">
+  <circle cx="32" cy="32" r="32" fill="#8a6a2f"/>
+  <rect x="18" y="26" width="28" height="12" rx="4" fill="#ffffff" transform="rotate(-45 32 32)"/>
+  <circle cx="24" cy="24" r="7" fill="#ffffff"/>
+  <circle cx="24" cy="24" r="3" fill="#8a6a2f"/>
+</svg>

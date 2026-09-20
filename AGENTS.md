@@ -8,6 +8,26 @@
 - Changelog entries, issue labels, attribution links, and the AI-generated disclaimer line stay in their required formats; only the surrounding prose is Chinese.
 - The rest of this file stays in English so it reads consistently, but the language of generated output is always Chinese.
 
+## UI 准则（永久生效）
+
+- 界面元素之间**不得重叠**。任何两个元素在任何宽度下都不能互相遮挡，这是硬性要求。
+- **必须美观**：控件风格统一、对齐规整、间距一致，不允许出现拥挤、错位、参差不齐的排版。
+- 新增浮层、提示、工具条、按钮、悬浮信息时，必须检查它与其他元素的占位关系：悬浮时间、引用条、操作按钮、弹出消息、顶栏、输入框这些都属于容易撞车的区域。
+- 需要占位的东西（悬浮显示的时间、提示卡片）要么预留自己的空间，要么相对「整块消息」定位，不要相对其中一个子元素定位。
+- 居中 / 撑满类布局要给外层容器加占位块，不要把占位块挂在页面级容器上，避免把固定的顶栏、侧边栏顶走。
+- 对话框里的标签、输入框、下拉框、滑块、按钮要成组排布：同类控件同样式，操作按钮按「左侧次要、右侧主要」分组，不要挤成一排。
+- 带状态的交互（多选、引用、分享选择）必须**按会话隔离**：切换会话时清空选择状态，禁止把上一个会话的选择带到新会话。
+- 改完 UI 后，检查常见宽度（窄窗口、宽屏）下是否出现遮挡、挤压、竖向排字、上下留白不均。
+
+## 目录职责（永久生效）
+
+- `core/`：基础实现。调用模型、记忆与会话存储、一轮问答的流程、领域错误、可调默认值都放这里，不依赖 FastAPI、不 console 输出。
+- `app/`：具体实现层。只有 HTTP 接口、请求/响应模型、参数校验、领域错误到 HTTP 状态码的映射、前端静态资源。
+- `demo/`：**测试用样例**，只用来演示和手工验证，正式实现（`app/`、其他包）不得 import `demo/` 下的任何东西。
+- `docs/`：说明文档，包含接口说明和可自定义字段的参考。
+
+判断标准：能被多个入口（Web、命令行、脚本）复用、且与传输方式无关的逻辑，属于 `core/`；只服务于某个具体入口的，放 `app/`。
+
 ## Conversational Style
 
 - Keep answers short and concise

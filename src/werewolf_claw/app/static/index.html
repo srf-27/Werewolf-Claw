@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Werewolf-Claw 聊天机器人</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h1>会话</h1>
+        <button id="toggle-select" class="ghost icon-only" title="多选会话">
+          <span class="icon" data-icon="select"></span>
+        </button>
+      </div>
+      <button id="new-session" class="primary">＋ 新建会话</button>
+      <ul id="session-list" class="session-list"></ul>
+      <div id="select-bar" class="select-bar" hidden>
+        <span id="select-count">已选 0 项</span>
+        <button id="pin-selected" title="置顶选中的会话"><span class="icon" data-icon="pin"></span></button>
+        <button id="unpin-selected" title="取消置顶"><span class="icon" data-icon="pin-off"></span></button>
+        <button id="delete-selected" class="danger" title="删除选中的会话"><span class="icon" data-icon="trash"></span></button>
+        <button id="exit-select" title="完成多选"><span class="icon" data-icon="check"></span></button>
+      </div>
+      <div class="sidebar-foot">
+        <button id="footer-menu-button" class="ghost icon-text" title="设置">
+          <span class="icon" data-icon="gear"></span><span id="footer-profile">模型配置</span>
+        </button>
+        <button id="footer-help" class="ghost" title="使用帮助"><span class="icon" data-icon="help"></span></button>
+      </div>
+    </aside>
+
+    <main class="chat" id="chat">
+      <header class="topbar">
+        <div class="session-info">
+          <div id="current-title" class="session-title">未选择会话</div>
+          <div id="model-name" class="model"></div>
+        </div>
+        <div class="actions">
+          <button id="open-settings" class="icon-text" title="设置模型配置">
+            <span class="icon" data-icon="sliders"></span>设置 API
+          </button>
+          <button id="share-session" class="icon-text" title="把当前对话导出成图片"><span class="icon" data-icon="share"></span>分享</button>
+          <button id="export-session" class="icon-text" title="导出当前会话"><span class="icon" data-icon="download"></span>导出</button>
+          <button id="import-session" class="icon-text" title="导入会话文件"><span class="icon" data-icon="upload"></span>导入</button>
+          <input id="import-file" type="file" accept=".json,application/json" hidden>
+        </div>
+      </header>
+
+      <div class="chat-body">
+        <section id="messages" class="messages"></section>
+
+        <div id="hero" class="hero" hidden>
+          <img class="hero-logo" src="/static/avatars/assistant.svg" alt="">
+          <h1>欢迎回来，随时开始吧</h1>
+        </div>
+
+        <form id="composer" class="composer">
+          <div class="composer-inner">
+            <div id="quote-preview" class="quote-preview" hidden>
+              <span id="quote-text" class="quote-text"></span>
+              <button id="quote-remove" type="button" title="取消引用"><span class="icon" data-icon="close"></span></button>
+            </div>
+            <div class="composer-box">
+              <textarea id="input" rows="1" placeholder="给 Werewolf-Claw 发送消息"></textarea>
+              <button type="submit" id="send" class="send" title="发送"><span class="icon" data-icon="send"></span></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <aside id="rail" class="rail" hidden></aside>
+    </main>
+  </div>
+
+  <div id="rail-tip" class="rail-tip" hidden></div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <div id="share-bar" class="share-bar" hidden>
+    <span id="share-count" class="share-count">已选 0 条</span>
+    <button id="share-select-all" class="icon-text" type="button">
+      <span class="icon" data-icon="check-circle"></span>全选
+    </button>
+    <button id="share-copy-text" class="icon-text" type="button">
+      <span class="icon" data-icon="copy"></span>复制文本
+    </button>
+    <button id="share-copy-link" class="icon-text" type="button">
+      <span class="icon" data-icon="link"></span>复制链接
+    </button>
+    <button id="share-image" class="icon-text" type="button">
+      <span class="icon" data-icon="image"></span>生成图片
+    </button>
+    <button id="share-cancel" type="button">取消</button>
+  </div>
+
+  <ul id="context-menu" class="context-menu" hidden>
+    <li data-action="rename">重命名</li>
+    <li data-action="pin">置顶</li>
+    <li data-action="unpin">取消置顶</li>
+    <li data-action="delete" class="danger">删除会话</li>
+  </ul>
+
+  <ul id="footer-menu" class="context-menu" hidden>
+    <li data-action="settings">模型配置</li>
+    <li data-action="font">字体设置</li>
+    <li data-action="theme">夜间模式</li>
+    <li data-action="help">使用帮助</li>
+    <li data-action="about">关于（<span id="footer-version">v0.1.0</span>）</li>
+  </ul>
+
+  <dialog id="font-dialog">
+    <h2>字体设置</h2>
+    <label class="field">字体
+      <select id="font-family"></select>
+    </label>
+    <label class="field">字号
+      <span class="range-row">
+        <input id="font-size" type="range" min="12" max="22" step="1">
+        <span id="font-size-value" class="range-value">14 px</span>
+      </span>
+    </label>
+    <div class="dialog-actions between">
+      <button id="font-import" type="button">导入字体文件</button>
+      <input id="font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>
+      <span class="button-group">
+        <button id="font-reset" type="button">恢复默认</button>
+        <button id="font-close" type="button" class="primary">完成</button>
+      </span>
+    </div>
+    <p id="font-hint" class="hint"></p>
+  </dialog>
+
+  <dialog id="confirm-dialog">
+    <h2 id="confirm-title">请确认</h2>
+    <p id="confirm-message" class="hint"></p>
+    <div class="dialog-actions end">
+      <button id="confirm-cancel" type="button">取消</button>
+      <button id="confirm-ok" type="button" class="primary">确定</button>
+    </div>
+  </dialog>
+
+  <dialog id="rename-dialog">
+    <h2>重命名会话</h2>
+    <input id="rename-input" maxlength="50" placeholder="输入新的标题">
+    <div class="dialog-actions">
+      <button id="rename-cancel" type="button">取消</button>
+      <button id="rename-submit" type="button" class="primary">保存</button>
+    </div>
+  </dialog>
+
+  <dialog id="edit-dialog">
+    <h2>编辑这条消息</h2>
+    <p class="hint">保存后会撤回这一轮问答（连同助手的回复一起从记忆里删掉），再用新内容重新提问。</p>
+    <textarea id="edit-input" rows="5"></textarea>
+    <div class="dialog-actions">
+      <button id="edit-cancel" type="button">取消</button>
+      <button id="edit-submit" type="button" class="primary">保存并重新提问</button>
+    </div>
+  </dialog>
+
+  <dialog id="settings-dialog" class="wide">
+    <div class="dialog-head">
+      <h2>模型配置</h2>
+      <button id="add-profile" type="button" class="icon-text"><span class="icon" data-icon="plus"></span>新增配置</button>
+    </div>
+    <div id="profile-list" class="profile-list"></div>
+    <p id="settings-hint" class="hint"></p>
+    <div class="dialog-actions end">
+      <button id="settings-cancel" type="button">取消</button>
+      <button id="settings-submit" type="button" class="primary">保存</button>
+    </div>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

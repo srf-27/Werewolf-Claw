@@ -9,7 +9,9 @@ InputNode -"history"-> HistoryNode -> InputNode，InputNode -"sessions"-> Sessio
     uv run python -m werewolf_claw.demo.chatbot            # 先问要不要进旧会话
     uv run python -m werewolf_claw.demo.chatbot game-1     # 直接进指定会话
 
-记录存在 memory/chat.db，按会话 id 隔离：退出时会用模型给会话起个标题，下次启动
+一轮问答的实现在 core.conversation，这里只负责用 Node + Flow 组织交互。
+
+记录存在 memory/chat.db，按会话 id 隔离：第一轮问答后会自动给会话起个标题，下次启动
 会列出「会话 id -> 标题」让你挑，进去先回放最近 10 条消息。聊天中输入 `history`
 看当前会话的全部历史，`sessions` 看所有会话。用户明确说"记住…"时写长期记忆，
 上下文到 90% 时自动压缩。配置从项目根目录的 .env 读取。
@@ -22,16 +24,11 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
-from dotenv import load_dotenv
-
-from werewolf_claw.core.llm import chat_full
-from werewolf_claw.core.memory import ROLE_LABELS, Memory
+from werewolf_claw.core import conversation
+from werewolf_claw.core.memory import ROLE_LABELS, Memory, new_session_id
 from werewolf_claw.core.node import DEFAULT_ACTION, Flow, Node
 
-# .env 是本地配置的唯一来源，系统里已有同名环境变量时也以 .env 为准。
-load_dotenv(override=True)
-
-SYSTEM_PROMPT = "你是狼人杀游戏里的助手，用中文简短回答玩家的问题。"
+# 配置由 core.llm 在导入时从项目根目录的 .env 读取，命令行和 Web 服务共用一份。
 
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit"}
 HISTORY_COMMANDS = {"history", "/history", "hist"}
@@ -64,26 +61,24 @@ class InputNode(Node):
             return "history", None
         if lowered in SESSIONS_COMMANDS:
             return "sessions", None
-        if self.memory.add_user(text):
-            print("（收到，已记入长期记忆）")
         return "reply", text
 
 
 class ReplyNode(Node):
-    """从记忆里取上下文发给 LLM，打印回复，再把回复写回记忆。"""
+    """调 core.conversation 走完一轮问答，打印回复和副作用。"""
 
-    def __init__(self, memory: Memory, system_prompt: str = SYSTEM_PROMPT, **kwargs: Any) -> None:
+    def __init__(self, memory: Memory, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.memory = memory
-        self.system_prompt = system_prompt
 
     def exec(self, payload: Any) -> tuple[str, Any]:
-        completion = chat_full(self.memory.build_context(self.system_prompt), temperature=0.7)
-        reply = completion.choices[0].message.content or ""
-        print(f"机器人: {reply}")
-        if self.memory.add_assistant(reply, usage=completion.usage):
+        result = conversation.send(self.memory, str(payload))
+        if result.remembered:
+            print("（收到，已记入长期记忆）")
+        print(f"机器人: {result.reply}")
+        if result.compressed:
             print("（上下文已压缩，更早的内容转入摘要）")
-        return DEFAULT_ACTION, reply
+        return DEFAULT_ACTION, result.reply
 
 
 class ExitNode(Node):
@@ -172,10 +167,10 @@ def print_history(memory: Memory) -> None:
         print(f"    {row['content']}")
 
 
-def build_flow(memory: Memory, system_prompt: str = SYSTEM_PROMPT) -> Flow:
+def build_flow(memory: Memory) -> Flow:
     """按 action 把节点连成一条带循环的链路。"""
     input_node = InputNode(memory)
-    reply_node = ReplyNode(memory, system_prompt)
+    reply_node = ReplyNode(memory)
     history_node = HistoryNode(memory)
     sessions_node = SessionsNode(memory)
     exit_node = ExitNode()
@@ -189,11 +184,6 @@ def build_flow(memory: Memory, system_prompt: str = SYSTEM_PROMPT) -> Flow:
     history_node - DEFAULT_ACTION >> input_node
     sessions_node - DEFAULT_ACTION >> input_node
     return Flow(input_node)
-
-
-def new_session_id() -> str:
-    """给新会话生成一个带时间戳的 id。"""
-    return f"chat-{datetime.now():%Y%m%d-%H%M%S}"
 
 
 def pick_session() -> str:
@@ -221,7 +211,6 @@ def pick_session() -> str:
 def run_session(session_id: str) -> None:
     """进入一个会话：先回放最近的消息，再开始聊天。"""
     with Memory(session_id) as memory:
-        before = len(memory.messages(include_compacted=True))
         recent = memory.messages(limit=RECENT_MESSAGES_ON_ENTER, include_compacted=True)
         if recent:
             print(f"进入会话 {session_id}，标题：{memory.title() or '（无标题）'}")
@@ -233,16 +222,10 @@ def run_session(session_id: str) -> None:
 
         build_flow(memory).run()
 
-        after = len(memory.messages(include_compacted=True))
-        if after and (after > before or not memory.title()):
-            try:
-                title = memory.update_title()
-            except Exception as exc:  # 标题生成失败不影响已经存好的记录
-                title = None
-                print(f"标题生成失败：{exc}")
-            if title:
-                print(f"会话标题已保存：{title}")
-        print(f"现在历史共 {after} 条消息。")
+        # 标题由 core.conversation 在第一轮问答后自动生成，这里只播报结果
+        if memory.title():
+            print(f"会话标题：{memory.title()}")
+        print(f"现在历史共 {memory.message_count()} 条消息。")
 
 
 def main() -> None:
@@ -253,3 +236,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

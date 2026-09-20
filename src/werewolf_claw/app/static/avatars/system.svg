@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="系统头像">
+  <circle cx="32" cy="32" r="32" fill="#7b8494"/>
+  <path d="M32 16l7 4v12l-7 4-7-4V20z" fill="#ffffff"/>
+  <rect x="29" y="38" width="6" height="12" rx="3" fill="#ffffff"/>
+</svg>

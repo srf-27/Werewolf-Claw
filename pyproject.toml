@@ -7,8 +7,10 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.141.1",
     "openai>=3.14.0",
     "python-dotenv>=1.2.3",
+    "uvicorn[standard]>=0.53.0",
 ]
 
 [project.scripts]
@@ -21,3 +23,8 @@ default = true
 [build-system]
 requires = ["uv_build>=0.12.14,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+# 本地聊天库和缓存不该进发行包，只发布源码和静态资源。
+source-exclude = ["**/memory/**", "**/*.db", "**/*.db-wal", "**/*.db-shm"]
+wheel-exclude = ["**/memory/**", "**/*.db", "**/*.db-wal", "**/*.db-shm"]

@@ -7,6 +7,8 @@
 - `werewolf_claw.tools`：供节点复用的通用工具。
 """
 
+__version__ = "0.1.0"
+
 
 def main() -> None:
     """命令行入口，对应 `[project.scripts]` 里的 `werewolf-claw`。"""
