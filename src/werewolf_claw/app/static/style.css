@@ -1289,3 +1289,68 @@ dialog input[type="range"] {
   line-height: 1.6;
   overflow-x: auto;
 }
+
+/* 首页：只有一个入口按钮，居中放在自己的外层容器里，
+   不往页面级容器上挂占位块 */
+.home-body {
+  overflow: auto;
+}
+
+.home-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 40px 24px;
+}
+
+.home-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.home-logo {
+  width: 56px;
+  height: 56px;
+}
+
+.home-title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.home-sub {
+  margin: 0;
+  color: var(--muted);
+}
+
+.home-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 9px 22px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-action:hover {
+  filter: brightness(1.05);
+}
+
+/* 侧栏底部的图标按钮成组靠右，和左侧的设置按钮拉开距离 */
+.foot-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}

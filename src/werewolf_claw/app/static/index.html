@@ -23,13 +23,16 @@
         <button id="pin-selected" title="置顶选中的会话"><span class="icon" data-icon="pin"></span></button>
         <button id="unpin-selected" title="取消置顶"><span class="icon" data-icon="pin-off"></span></button>
         <button id="delete-selected" class="danger" title="删除选中的会话"><span class="icon" data-icon="trash"></span></button>
-        <button id="exit-select" title="完成多选"><span class="icon" data-icon="check"></span></button>
+        <button id="exit-select" title="结束多选"><span class="icon" data-icon="check"></span></button>
       </div>
       <div class="sidebar-foot">
         <button id="footer-menu-button" class="ghost icon-text" title="设置">
           <span class="icon" data-icon="gear"></span><span id="footer-profile">模型配置</span>
         </button>
-        <button id="footer-help" class="ghost" title="使用帮助"><span class="icon" data-icon="help"></span></button>
+        <span class="foot-actions">
+          <button id="footer-home" class="ghost" title="回到首页"><span class="icon" data-icon="home"></span></button>
+          <button id="footer-help" class="ghost" title="使用帮助"><span class="icon" data-icon="help"></span></button>
+        </span>
       </div>
     </aside>
 
@@ -43,9 +46,12 @@
           <button id="open-settings" class="icon-text" title="设置模型配置">
             <span class="icon" data-icon="sliders"></span>设置 API
           </button>
-          <button id="share-session" class="icon-text" title="把当前对话导出成图片"><span class="icon" data-icon="share"></span>分享</button>
-          <button id="export-session" class="icon-text" title="导出当前会话"><span class="icon" data-icon="download"></span>导出</button>
-          <button id="import-session" class="icon-text" title="导入会话文件"><span class="icon" data-icon="upload"></span>导入</button>
+          <button id="share-session" class="icon-text" title="把当前会话中选中的对话导出成文字或图片">
+            <span class="icon" data-icon="share"></span>分享</button>
+          <button id="export-session" class="icon-text" title="导出当前会话">
+            <span class="icon" data-icon="download"></span>导出</button>
+          <button id="import-session" class="icon-text" title="导入会话文件">
+            <span class="icon" data-icon="upload"></span>导入</button>
           <input id="import-file" type="file" accept=".json,application/json" hidden>
         </div>
       </header>
@@ -55,7 +61,7 @@
 
         <div id="hero" class="hero" hidden>
           <img class="hero-logo" src="/static/avatars/assistant.svg" alt="">
-          <h1>欢迎回来，随时开始吧</h1>
+          <h1>你好，我是你的狼人杀对局助手</h1>
         </div>
 
         <form id="composer" class="composer">
@@ -145,20 +151,19 @@
 
   <dialog id="rename-dialog">
     <h2>重命名会话</h2>
-    <input id="rename-input" maxlength="50" placeholder="输入新的标题">
-    <div class="dialog-actions">
+    <input id="rename-input" maxlength="50" placeholder="请输入新的标题">
+    <div class="dialog-actions end">
       <button id="rename-cancel" type="button">取消</button>
       <button id="rename-submit" type="button" class="primary">保存</button>
     </div>
   </dialog>
 
   <dialog id="edit-dialog">
-    <h2>编辑这条消息</h2>
-    <p class="hint">保存后会撤回这一轮问答（连同助手的回复一起从记忆里删掉），再用新内容重新提问。</p>
+    <h2>重新编辑这条消息</h2>
     <textarea id="edit-input" rows="5"></textarea>
-    <div class="dialog-actions">
+    <div class="dialog-actions end">
       <button id="edit-cancel" type="button">取消</button>
-      <button id="edit-submit" type="button" class="primary">保存并重新提问</button>
+      <button id="edit-submit" type="button" class="primary">确认</button>
     </div>
   </dialog>
 
