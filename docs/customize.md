@@ -113,8 +113,9 @@
 | 目录 | 放什么 |
 | --- | --- |
 | `src/werewolf_claw/core/` | 基础实现：模型调用、记忆、一轮问答流程、节点、领域错误、可调默认值 |
+| `src/werewolf_claw/agents/` | Agent 层：每个 Agent 一条 Node + Flow（`chatagent`、`judge_agent`、`player_agent`），只做编排 |
 | `src/werewolf_claw/app/` | 具体实现：HTTP 接口、请求响应模型、错误映射、前端静态资源 |
 | `src/werewolf_claw/demo/` | 测试用样例（命令行版），正式代码不 import |
 | `docs/` | 文档 |
 
-新增功能时：能被多个入口复用的逻辑放 `core/`，只服务某个入口的放 `app/`。
+新增功能时：能被多个入口复用的逻辑放 `core/`，把 `core/` 的能力串成一条 Node + Flow 的流程放 `agents/`，只服务某个入口的放 `app/`。
