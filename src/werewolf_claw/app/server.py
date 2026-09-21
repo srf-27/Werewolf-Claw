@@ -1,15 +1,19 @@
-"""Web 后端：把 core 的记忆、节点和 LLM 能力包成 HTTP 接口，给 app/static 的前端用。
+"""Web 后端：把 agents 的聊天 Agent 包成 HTTP 接口，给 app/static 的前端用。
 
 启动：
 
     uv run uvicorn werewolf_claw.app.server:app --reload
     uv run python -m werewolf_claw.app.server
 
-页面在 http://127.0.0.1:8000/ ，交互式接口文档在 http://127.0.0.1:8000/api-docs ，
+首页在 http://127.0.0.1:8000/ ，聊天页面在 http://127.0.0.1:8000/chat ，
+交互式接口文档在 http://127.0.0.1:8000/api-docs ，
 接口的文字说明见 docs/api.md。会话数据存在 memory/chat.db，和命令行 demo 共用；
 模型配置统一由 core.llm 从项目根目录的 .env 读取，设置页保存的也是那个文件。
 
 环境变量：`WEREWOLF_DB`（库文件路径）、`WEREWOLF_HOST`、`WEREWOLF_PORT`。
+
+这一层只管 HTTP：请求模型、参数校验、领域错误到状态码的映射。一轮问答的编排在
+`agents/chatagent.py`（Node + Flow），实现细节在 `core/conversation.py`。
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from werewolf_claw.agents import chatagent
 from werewolf_claw.core import conversation
 from werewolf_claw.core.llm import (
     MAX_PROFILES,
@@ -260,7 +265,7 @@ def post_message(session_id: str, body: NewMessage) -> dict[str, Any]:
     """写入用户消息、调用模型、写回回复；第一轮结束后自动总结一个标题。"""
     with session_memory(session_id) as memory:
         try:
-            result = conversation.send(memory, body.text, to_quote(body.quote))
+            result = chatagent.ChatAgent(memory).send(body.text, to_quote(body.quote))
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return turn_payload(memory, result)
@@ -271,7 +276,7 @@ def edit_last_message(session_id: str, body: NewMessage) -> dict[str, Any]:
     """撤掉最后一轮问答，用编辑后的内容重新提问。"""
     with session_memory(session_id) as memory:
         try:
-            result = conversation.edit_last(memory, body.text)
+            result = chatagent.ChatAgent(memory).edit(body.text)
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return turn_payload(memory, result)
@@ -286,7 +291,7 @@ def regenerate_reply(session_id: str) -> dict[str, Any]:
     """重新生成最后一条回复，一条回复最多重新生成几次见 core.conversation.MAX_REGENERATE。"""
     with session_memory(session_id) as memory:
         try:
-            result = conversation.regenerate(memory)
+            result = chatagent.ChatAgent(memory).regenerate()
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return {
@@ -409,8 +414,14 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/", include_in_schema=False)
-def index() -> FileResponse:
-    """前端页面。"""
+def home_page() -> FileResponse:
+    """首页：目前只有一个进入聊天页的入口。"""
+    return FileResponse(STATIC_DIR / "home.html")
+
+
+@app.get("/chat", include_in_schema=False)
+def chat_page() -> FileResponse:
+    """聊天页面，从首页的按钮进来。"""
     return FileResponse(STATIC_DIR / "index.html")
 
 
