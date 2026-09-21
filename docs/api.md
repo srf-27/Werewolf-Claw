@@ -459,3 +459,5 @@ curl -X PUT http://127.0.0.1:8000/api/settings -H "Content-Type: application/jso
 ## 和命令行 demo 的关系
 
 `src/werewolf_claw/demo/chatbot.py` 是命令行版，页面是它的 Web 版，两者共用 `core/memory.py` 的存储和 `core/llm.py` 的配置，所以同一个会话先用命令行聊、再用页面接着聊也没问题。
+
+网页版一轮问答的编排在 `src/werewolf_claw/agents/chatagent.py`（Node + Flow），实现细节仍在 `src/werewolf_claw/core/conversation.py`。
