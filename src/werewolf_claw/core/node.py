@@ -107,3 +107,40 @@ class Flow:
 
     def __repr__(self) -> str:
         return f"Flow(start={self.start!r})"
+
+
+class ToolCallNode(Node):
+    """可复用节点：执行模型返回的 tool_calls（参考脚本里的 ToolCallNode）。
+
+    payload 是带 `tool_calls` 的模型回复（SDK 对象或 dict 都行）。执行结果按
+    `results_key` 写进模块级 `shared`，后面的节点/Agent 直接读；然后按 `then` 这条边
+    回到"再问一次模型"的节点，构成 chat → tool_call → chat 的循环。
+
+    `executor` 只需要有 `parse_tool_calls()` 和 `execute_all()`（见
+    `werewolf_claw.tools.ToolExecutor`）；core 层不 import tools，保持分层。
+    """
+
+    def __init__(
+        self,
+        executor: Any,
+        *,
+        results_key: str = "tool_results",
+        then: str = "chat",
+        on_result: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.executor = executor
+        self.results_key = results_key
+        self.then = then
+        self.on_result = on_result
+
+    def exec(self, payload: Any) -> tuple[str, Any]:
+        calls = self.executor.parse_tool_calls(payload)
+        results = self.executor.execute_all(calls)
+        shared.setdefault(self.results_key, [])
+        shared[self.results_key] = results
+        if self.on_result is not None:
+            self.on_result(results)
+        return self.then, payload
+

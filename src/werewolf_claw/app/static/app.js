@@ -110,6 +110,8 @@ const el = {
   exportSession: document.getElementById("export-session"),
   importSession: document.getElementById("import-session"),
   importFile: document.getElementById("import-file"),
+  importGame: document.getElementById("import-game"),
+  gameFile: document.getElementById("game-file"),
   contextMenu: document.getElementById("context-menu"),
   renameDialog: document.getElementById("rename-dialog"),
   renameInput: document.getElementById("rename-input"),
@@ -344,6 +346,21 @@ function buildMessageRow(row) {
   content.className = "content";
   content.textContent = row.content;
   bubble.append(content);
+
+  // 长消息自动收缩：超过 300 字或 10 行时只显示前几行，用户点"展开"看全文
+  const COLLAPSE_CHARS = 300;
+  if ((row.content || "").length > COLLAPSE_CHARS) {
+    bubble.classList.add("collapsed");
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "collapse-toggle";
+    toggle.textContent = "展开";
+    toggle.addEventListener("click", () => {
+      const collapsed = bubble.classList.toggle("collapsed");
+      toggle.textContent = collapsed ? "展开" : "收起";
+    });
+    bubble.append(toggle);
+  }
 
   const actions = document.createElement("div");
   actions.className = "msg-actions";
@@ -1818,6 +1835,47 @@ el.importFile.addEventListener("change", () => {
   }
   el.importFile.value = "";
 });
+
+el.importGame.addEventListener("click", () => el.gameFile.click());
+el.gameFile.addEventListener("change", () => {
+  const file = el.gameFile.files[0];
+  el.gameFile.value = "";
+  if (file) {
+    importGame(file);
+  }
+});
+
+// 导入对局数据：战报文本和复盘请求合并成一条消息，不单独生成多余消息块
+async function importGame(file) {
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    setStatus("对局文件不是合法 JSON", "error");
+    return;
+  }
+  if (data.type && data.type !== "werewolf-game-export") {
+    setStatus("不是对局导出文件（缺少 werewolf-game-export 标记）", "error");
+    return;
+  }
+  try {
+    if (!state.sessionId) {
+      await createSession();
+    }
+    setStatus("对局数据已导入，正在分析…");
+    const result = await api(`/api/sessions/${encodeURIComponent(state.sessionId)}/import-game`, {
+      method: "POST",
+      body: JSON.stringify({ game: data }),
+    });
+    const prompt =
+      result.digest +
+      "\n\n请复盘上面导入的这局对局：结合每位玩家的身份、夜间动作、发言和投票，" +
+      "指出关键决策点、谁的操作可以改进，以及胜负是怎么决定的。";
+    await sendMessage(prompt);
+  } catch (error) {
+    setStatus(`导入失败：${error.message}`, "error");
+  }
+}
 
 el.composer.addEventListener("submit", (event) => {
   event.preventDefault();

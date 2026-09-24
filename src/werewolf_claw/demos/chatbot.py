@@ -6,8 +6,8 @@ InputNode -"history"-> HistoryNode -> InputNode，InputNode -"sessions"-> Sessio
 
 运行：
 
-    uv run python -m werewolf_claw.demo.chatbot            # 先问要不要进旧会话
-    uv run python -m werewolf_claw.demo.chatbot game-1     # 直接进指定会话
+    uv run python -m werewolf_claw.demos.chatbot            # 先问要不要进旧会话
+    uv run python -m werewolf_claw.demos.chatbot game-1     # 直接进指定会话
 
 一轮问答的实现在 core.conversation，这里只负责用 Node + Flow 组织交互。
 

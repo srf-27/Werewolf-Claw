@@ -71,8 +71,12 @@
               <button id="quote-remove" type="button" title="取消引用"><span class="icon" data-icon="close"></span></button>
             </div>
             <div class="composer-box">
+              <button type="button" id="import-game" class="composer-tool" title="导入对局数据并分析">
+                <span class="icon" data-icon="upload"></span>
+              </button>
               <textarea id="input" rows="1" placeholder="给 Werewolf-Claw 发送消息"></textarea>
               <button type="submit" id="send" class="send" title="发送"><span class="icon" data-icon="send"></span></button>
+              <input id="game-file" type="file" accept=".json,application/json" hidden>
             </div>
           </div>
         </form>
