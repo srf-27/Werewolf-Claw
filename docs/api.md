@@ -224,7 +224,7 @@ curl -X POST http://127.0.0.1:8000/api/sessions -H "Content-Type: application/js
 
 ## POST /api/sessions/{id}/messages
 
-发一条用户消息。服务端依次：写入用户消息、取该会话的上下文、调用模型、把回复写回记忆（顺便判断是否需要压缩）、第一轮结束后自动总结标题。
+发一条用户消息。服务端依次：写入用户消息、带着工具清单问一次模型、模型要调工具就先执行工具并把结果接回上下文再问一次、把回复写回记忆（顺便判断是否需要压缩）、第一轮结束后自动总结标题。工具结果只参与这一轮，不写进会话，所以下面的响应结构不变。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
@@ -458,6 +458,15 @@ curl -X PUT http://127.0.0.1:8000/api/settings -H "Content-Type: application/jso
 
 ## 和命令行 demo 的关系
 
-`src/werewolf_claw/demo/chatbot.py` 是命令行版，页面是它的 Web 版，两者共用 `core/memory.py` 的存储和 `core/llm.py` 的配置，所以同一个会话先用命令行聊、再用页面接着聊也没问题。
+`src/werewolf_claw/demos/chatbot.py` 是命令行版，页面是它的 Web 版，两者共用 `core/memory.py` 的存储和 `core/llm.py` 的配置，所以同一个会话先用命令行聊、再用页面接着聊也没问题。
 
-网页版一轮问答的编排在 `src/werewolf_claw/agents/chatagent.py`（Node + Flow），实现细节仍在 `src/werewolf_claw/core/conversation.py`。
+网页版一轮问答的编排在 `src/werewolf_claw/agents/chat_agent.py`（Node + Flow）：
+
+```
+输入 -"回复"-> 推断是否需要调用工具 -"需要"-> 调用工具 -> 回复
+                                 -"不需要"-------------> 回复
+    -"编辑"-> 编辑（撤回上一轮后重新提问）-> 推断
+    -"重新生成"-> 重新生成 -> 回复
+```
+
+一轮问答的实现细节在 `core/conversation.py` 的 `open_turn()` / `ask()` / `answer_turn()`；工具在 `tools/agent_tools.py`，用 LangChain 的 `@tool` 装饰器声明（`get_chat_tools()` 给聊天 Agent 查板子、查身份规则，不联网），`ToolExecutor` 负责转成 OpenAI 格式、执行、产出工具消息。

@@ -504,6 +504,37 @@ button.danger {
   word-break: break-word;
 }
 
+/* 长消息自动收缩：默认只显示一部分，用户点"展开"看全文 */
+.bubble.collapsed .content {
+  max-height: 8em;
+  overflow: hidden;
+  position: relative;
+}
+.bubble.collapsed .content::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5em;
+  background: linear-gradient(transparent, var(--bubble, #fff));
+  pointer-events: none;
+}
+.collapse-toggle {
+  display: block;
+  margin-top: 4px;
+  padding: 2px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+.collapse-toggle:active {
+  transform: scale(0.94);
+}
+
 .msg-row.thinking .content {
   color: var(--muted);
   animation: thinking 1.2s ease-in-out infinite;
@@ -732,6 +763,27 @@ button.danger {
 
 .composer textarea:focus {
   outline: none;
+}
+
+/* 发送框内的工具按钮（导入对局数据）：和发送按钮同尺寸的次级样式 */
+.composer .composer-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.composer .composer-tool:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .composer .send {
@@ -1310,8 +1362,48 @@ dialog input[type="range"] {
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 420px;
+  max-width: 760px;
   text-align: center;
+}
+
+/* 两张入口卡片并排：窄窗口自动换行，不互相遮挡 */
+.home-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: stretch;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  padding: 26px 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.home-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.home-card-title {
+  margin: 4px 0 0;
+  font-size: 21px;
+}
+
+.home-card-sub {
+  min-height: 3.4em;
+  margin: 0;
+  color: var(--muted);
 }
 
 .home-logo {
@@ -1333,6 +1425,7 @@ dialog input[type="range"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   margin-top: 10px;
   padding: 9px 22px;
   border: 1px solid var(--accent);
@@ -1342,6 +1435,12 @@ dialog input[type="range"] {
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.home-action-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
 }
 
 .home-action:hover {

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Werewolf-Claw 对局演示</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/game-static/style.css">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <h2>对局栏</h2>
+      <button id="sidebar-toggle" title="收起 / 展开对局栏">收起</button>
+    </div>
+    <ul class="game-list" id="game-list"></ul>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Werewolf-Claw 对局</h1>
+        <div class="subtitle" id="model-name">还没有对局</div>
+      </div>
+      <div class="status">
+        <span class="chip" id="chip-state">等待开局</span>
+        <span class="chip" id="chip-alive">存活 -</span>
+        <span class="chip" id="chip-time">0.0s</span>
+        <span class="chip" id="chip-board">板子 -</span>
+      </div>
+      <div class="actions">
+        <button id="go-home" title="返回主页">主页</button>
+        <button id="pause">暂停</button>
+        <button id="speed" title="倍速：压缩播报和步骤之间的等待">1×</button>
+        <label class="field checkbox"><input id="god-view" type="checkbox"> 上帝视角</label>
+        <label class="field checkbox"><input id="only-public" type="checkbox"> 只看大屏</label>
+        <button id="theme" title="切换深色 / 浅色">深色</button>
+        <button id="export-game" title="导出这一局的完整数据（身份、私聊、记录），可导入聊天页分析">导出</button>
+        <button id="new-game" class="primary">新对局</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <aside class="seats" id="seats-left"></aside>
+
+      <section class="board">
+        <div class="phase" id="phase-badge">
+          <span class="day" id="chip-day">第 0 天</span>
+          <span class="when" id="chip-phase">夜晚</span>
+          <span class="paused" id="chip-paused" hidden>已暂停</span>
+        </div>
+        <ol class="messages" id="messages"></ol>
+
+        <div class="judge-float" id="judge-float" hidden>
+          <span class="judge-tag">法官</span>
+          <span class="judge-text" id="judge-float-text"></span>
+        </div>
+
+        <div class="human-panel" id="human-panel" hidden>
+          <div class="countdown"><div class="bar" id="human-bar"></div></div>
+          <div class="human-head">
+            <span id="human-title"></span>
+            <span id="human-left"></span>
+          </div>
+          <div class="human-body" id="human-body"></div>
+        </div>
+      </section>
+
+      <aside class="seats" id="seats-right"></aside>
+    </main>
+  </div>
+
+  <div class="overlay" id="room" hidden>
+    <div class="overlay-card">
+      <h2>开一局</h2>
+      <div class="room-field">板子
+        <!-- 只有一种板子：组成直接以文本展示，不再是锁定的下拉框（select 保留用于取值） -->
+        <select id="room-board" hidden></select>
+        <div class="board-summary" id="room-board-text"></div>
+      </div>
+      <div class="room-field">每个 Agent 的模型
+        <div class="seat-models" id="room-seats"></div>
+        <button id="room-fill" class="ghost">全部用下面这套</button>
+        <select id="room-all"></select>
+        <button id="room-add-model" class="ghost">新增模型配置…</button>
+      </div>
+      <div class="room-hint" id="room-hint"></div>
+      <div class="room-actions">
+        <button id="room-cancel">取消</button>
+        <button id="room-start" class="primary">开始游戏</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="profile-form" hidden>
+    <div class="overlay-card">
+      <h2>新增模型配置</h2>
+      <label class="room-field">名字
+        <input id="profile-name" type="text" placeholder="例如 deepseek-flash">
+      </label>
+      <label class="room-field">API Key
+        <input id="profile-key" type="text" placeholder="sk-...">
+      </label>
+      <label class="room-field">接口地址（留空用 OpenAI 官方）
+        <input id="profile-url" type="text" placeholder="https://...">
+      </label>
+      <label class="room-field">模型名
+        <input id="profile-model" type="text" placeholder="deepseek-flash">
+      </label>
+      <div class="room-hint" id="profile-hint"></div>
+      <div class="room-actions">
+        <button id="profile-cancel">取消</button>
+        <button id="profile-save" class="primary">保存到 .env</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 玩家助手：接管座位后右下角出现。必须在 app.js 之前，脚本启动时才能绑定事件 -->
+  <button id="assistant-toggle" class="assistant-toggle" hidden>🧩 助手</button>
+  <div id="assistant-win" class="assistant-win" hidden>
+    <div class="assistant-head" id="assistant-head">
+      <span>玩家助手</span>
+      <button id="assistant-close" title="隐藏（点右下角助手再打开）">×</button>
+    </div>
+    <div class="assistant-body" id="assistant-body"></div>
+  </div>
+
+  <script src="/game-static/app.js"></script>
+</body>
+</html>

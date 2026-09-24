@@ -14,7 +14,7 @@
 - `LLM_PROFILE_NAME`: 可选，这套配置的名字，在设置页里可以改。
 
 模块导入时会加载 `.env`（先找仓库根目录，再找当前工作目录），`.env` 里的值覆盖同名的
-系统环境变量，所以命令行 demo、FastAPI 服务都用同一份配置。密钥、地址、模型名都在调用时
+系统环境变量，所以命令行 demos、FastAPI 服务都用同一份配置。密钥、地址、模型名都在调用时
 读取，改完用 `save_env()` 或 `reload_env()` 就能立即生效，不用重启。
 """
 
@@ -30,8 +30,8 @@ from dotenv import load_dotenv
 from openai import NOT_GIVEN, NotGiven, OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
-FALLBACK_MODEL = "gpt-4o-mini"
-DEFAULT_PROFILE_NAME = "模型配置一"
+FALLBACK_MODEL = "deepseek-flash"
+DEFAULT_PROFILE_NAME = "default"
 
 # 多套模型配置：LLM_PROFILE_<序号>_NAME / _API_KEY / _BASE_URL / _MODEL
 PROFILE_PREFIX = "LLM_PROFILE_"
@@ -43,7 +43,7 @@ _client: OpenAI | None = None
 
 
 def project_root() -> Path | None:
-    """源码布局下的仓库根目录，找不到（比如装进 site-packages）返回 None。"""
+    """源码布局下的仓库根目录，找不到返回 None。"""
     candidate = Path(__file__).resolve().parents[3]
     return candidate if (candidate / "pyproject.toml").is_file() else None
 
@@ -193,7 +193,7 @@ def save_env(values: Mapping[str, str], remove: Iterable[str] = ()) -> Path:
     path = env_path()
     lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
     if not lines:
-        lines = ["# 由设置页写入的本地配置，不要提交到仓库。", ""]
+        lines = ["本地私有配置，已被 .gitignore 忽略，不要提交到仓库。", "# 换成自己的密钥。", ""]
 
     dropped = set(remove)
     kept: list[str] = []
@@ -267,8 +267,7 @@ load_env()
 
 def default_model() -> str:
     """当前默认模型名，每次调用都重新读环境变量。
-
-    顺序：`LLM_MODEL` -> `OPENAI_MODEL` -> `gpt-4o-mini`。
+    顺序：`LLM_MODEL` -> `OPENAI_MODEL` -> `FALLBACK_MODEL`。
     """
     return os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL") or FALLBACK_MODEL
 

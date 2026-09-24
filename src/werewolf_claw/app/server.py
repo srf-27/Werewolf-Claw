@@ -7,20 +7,20 @@
 
 首页在 http://127.0.0.1:8000/ ，聊天页面在 http://127.0.0.1:8000/chat ，
 交互式接口文档在 http://127.0.0.1:8000/api-docs ，
-接口的文字说明见 docs/api.md。会话数据存在 memory/chat.db，和命令行 demo 共用；
+接口的文字说明见 docs/api.md。会话数据存在 memory/chat.db，和命令行 demos 共用；
 模型配置统一由 core.llm 从项目根目录的 .env 读取，设置页保存的也是那个文件。
 
 环境变量：`WEREWOLF_DB`（库文件路径）、`WEREWOLF_HOST`、`WEREWOLF_PORT`。
 
 这一层只管 HTTP：请求模型、参数校验、领域错误到状态码的映射。一轮问答的编排在
-`agents/chatagent.py`（Node + Flow），实现细节在 `core/conversation.py`。
+`agents/chat_agent.py`（Node + Flow），实现细节在 `core/conversation.py`。
 """
 
 from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -33,7 +33,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from werewolf_claw.agents import chatagent
+from werewolf_claw.agents import chat_agent
+from werewolf_claw.app.game import router as game_router
 from werewolf_claw.core import conversation
 from werewolf_claw.core.llm import (
     MAX_PROFILES,
@@ -54,6 +55,9 @@ from werewolf_claw.core.memory import (
 from werewolf_claw import __version__
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+# 直接返回 HTML 的页面路由：禁止浏览器缓存，避免旧 HTML 配新 JS 报元素缺失。
+PAGE_PATHS = frozenset({"/", "/chat", "/game", "/help", "/about"})
 
 DB_PATH = default_db_path()
 HOST = os.environ.get("WEREWOLF_HOST", "127.0.0.1")
@@ -122,10 +126,62 @@ class SettingsIn(BaseModel):
     profiles: list[ProfileIn] = Field(default_factory=list, description="全部配置，至少一套")
 
 
+class ImportGameIn(BaseModel):
+    """导入对局数据的请求体。"""
+
+    game: dict[str, Any] = Field(description="对局导出 JSON（type=werewolf-game-export）")
+
+
+# 导入摘要里单条记录的截断长度：整段战报要进会话上下文，单条太长会挤占它
+GAME_ROW_CHARS = 160
+
+
+def game_digest(data: Mapping[str, Any]) -> str:
+    """把对局导出 JSON 压成一段模型可读的中文战报。"""
+    game = data.get("game") if isinstance(data.get("game"), Mapping) else data
+    if not isinstance(game, Mapping):
+        raise HTTPException(status_code=422, detail="对局数据里没有 game 字段")
+    board = game.get("board") or {}
+    seats = game.get("seats") or []
+    messages = game.get("messages") or []
+    ledger = game.get("ledger") or []
+    head = (
+        f"对局 {game.get('id', '?')}：{board.get('name', '?')}"
+        f"（{board.get('size', '?')} 人，分布 {'、'.join(board.get('distribution') or [])}），"
+        f"共 {game.get('day', 0)} 天，状态 {game.get('status', '?')}"
+        + (f"，胜方 {game.get('winner')}" if game.get("winner") else "，未分胜负")
+    )
+    lines = [head]
+    rows = []
+    for seat in seats:
+        state = "存活" if seat.get("alive") else "出局"
+        rows.append(f"{seat.get('seat')} 号 {seat.get('name')}（{seat.get('role') or '?'}，{state}）")
+    if rows:
+        lines.append("座位身份：" + "；".join(rows))
+    if messages:
+        lines.append("对局记录：")
+        for message in messages:
+            if message.get("channel") == "private":
+                audience = "、".join(f"{seat} 号" for seat in message.get("audience") or ())
+                channel = f"私聊→{audience}" if audience else "私聊"
+            else:
+                channel = "公开"
+            text = str(message.get("text", ""))[:GAME_ROW_CHARS]
+            lines.append(
+                f"#{message.get('seq')} 第{message.get('day')}天 [{channel}] {message.get('kind')}：{text}"
+            )
+    if ledger:
+        lines.append("法官台账（夜间原始动作）：")
+        for message in ledger:
+            text = str(message.get("text", ""))[:GAME_ROW_CHARS]
+            lines.append(f"第{message.get('day')}天 {text}")
+    return "\n".join(lines)
+
+
 app = FastAPI(
     title="Werewolf-Claw Chatbot",
     version="0.1.0",
-    description="带记忆和会话隔离的聊天机器人接口，说明见仓库 docs/api.md。",
+    description="一个狼人杀聊天&助手机器人",
     docs_url="/api-docs",
     redoc_url=None,
 )
@@ -265,7 +321,7 @@ def post_message(session_id: str, body: NewMessage) -> dict[str, Any]:
     """写入用户消息、调用模型、写回回复；第一轮结束后自动总结一个标题。"""
     with session_memory(session_id) as memory:
         try:
-            result = chatagent.ChatAgent(memory).send(body.text, to_quote(body.quote))
+            result = chat_agent.ChatAgent(memory).send(body.text, to_quote(body.quote))
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return turn_payload(memory, result)
@@ -276,7 +332,7 @@ def edit_last_message(session_id: str, body: NewMessage) -> dict[str, Any]:
     """撤掉最后一轮问答，用编辑后的内容重新提问。"""
     with session_memory(session_id) as memory:
         try:
-            result = chatagent.ChatAgent(memory).edit(body.text)
+            result = chat_agent.ChatAgent(memory).edit(body.text)
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return turn_payload(memory, result)
@@ -291,7 +347,7 @@ def regenerate_reply(session_id: str) -> dict[str, Any]:
     """重新生成最后一条回复，一条回复最多重新生成几次见 core.conversation.MAX_REGENERATE。"""
     with session_memory(session_id) as memory:
         try:
-            result = chatagent.ChatAgent(memory).regenerate()
+            result = chat_agent.ChatAgent(memory).regenerate()
         except conversation.ChatError as exc:
             raise to_http_error(exc) from exc
         return {
@@ -357,6 +413,18 @@ def import_session(data: dict[str, Any]) -> dict[str, Any]:
         return {"session_id": session_id, "title": memory.display_title()}
 
 
+@app.post("/api/sessions/{session_id}/import-game", status_code=201, summary="导入对局数据")
+def import_game(session_id: str, body: ImportGameIn) -> dict[str, Any]:
+    """把导出的对局数据压成战报文本返回，由前端合并到一条消息里发给模型。
+
+    不再单独写进会话记忆——之前那样会多出一条自动生成的消息块。
+    """
+    if str(body.game.get("type") or "") not in ("", "werewolf-game-export"):
+        raise HTTPException(status_code=422, detail="不是对局导出文件（type 应为 werewolf-game-export）")
+    digest = game_digest(body.game)
+    return {"session_id": session_id, "digest": digest}
+
+
 @app.get("/api/settings", summary="读取模型配置")
 def get_settings() -> dict[str, Any]:
     """返回所有模型配置，密钥只返回打码结果。"""
@@ -411,6 +479,22 @@ def update_settings(body: SettingsIn) -> dict[str, Any]:
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/game-static", StaticFiles(directory=STATIC_DIR / "game"), name="game-static")
+app.include_router(game_router)
+
+
+@app.middleware("http")
+async def no_store_static(request, call_next):
+    """静态资源与页面均不缓存：改完前端刷新就能拿到新代码，不会一直跑旧 JS。
+
+    页面（/game 等）是带 ETag 的 FileResponse，浏览器会启发式缓存，
+    出现「旧 HTML + 新 JS」混搭导致元素缺失报错，所以页面也必须 no-store。
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith(("/static", "/game-static")) or path in PAGE_PATHS:
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/", include_in_schema=False)
